@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Turtle Trading Journal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(110deg, #111827 0%, #1f2937 100%);
+            color: #d1d5db;
+            min-height: 100vh;
+        }
+        .card {
+            background-color: rgba(31, 41, 55, 0.5); /* Semi-transparent */
+            backdrop-filter: blur(10px); /* Frosted glass effect */
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 0.75rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            border-color: rgba(59, 130, 246, 0.5);
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.6rem 1.2rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+            border: 1px solid transparent;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+        .btn-primary {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .btn-secondary {
+            background-color: #4b5563;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #374151;
+             transform: translateY(-2px);
+        }
+        .btn-danger {
+            background-color: #ef4444;
+            color: white;
+        }
+        .btn-danger:hover {
+            background-color: #dc2626;
+            transform: translateY(-2px);
+        }
+        .form-input {
+            width: 100%;
+            background-color: rgba(55, 65, 81, 0.7);
+            border: 1px solid #4b5563;
+            color: #d1d5db;
+            border-radius: 0.5rem;
+            padding: 0.6rem 0.85rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.4);
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(10, 10, 10, 0.8);
+            backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+        }
+        header {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 1.5rem;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div id="loading-spinner" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+        <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
+    </div>
+
+    <!-- Auth Container -->
+    <div id="auth-container" class="max-w-md mx-auto mt-10" style="display: none;">
+        <div class="card p-8 space-y-6">
+            <h2 id="auth-title" class="text-3xl font-bold text-center text-white bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500">Login</h2>
+            <div id="auth-error" class="text-red-400 text-sm text-center hidden"></div>
+            <div class="space-y-4">
+                <div>
+                    <label for="email" class="block text-sm font-medium mb-1">Email Address</label>
+                    <input type="email" id="email" class="form-input" placeholder="you@example.com">
+                </div>
+                <div>
+                    <label for="password" class="block text-sm font-medium mb-1">Password</label>
+                    <input type="password" id="password" class="form-input" placeholder="••••••••">
+                </div>
+            </div>
+            <div class="space-y-3 pt-2">
+                <button id="login-btn" class="btn btn-primary w-full">Login</button>
+                <button id="register-btn" class="btn btn-secondary w-full">Register</button>
+            </div>
+            <p class="text-xs text-center text-gray-400">
+                <a href="#" id="toggle-auth-mode" class="hover:underline">Need an account? Register here.</a>
+            </p>
+        </div>
+    </div>
+
+
+    <div id="app" class="max-w-7xl mx-auto space-y-8" style="display: none;">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+            <h1 class="text-4xl font-bold text-white bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-teal-300">Turtle Trading Journal</h1>
+            <div class="flex items-center space-x-4">
+                 <div id="user-info" class="text-sm text-gray-300 hidden"></div>
+                 <button id="download-btn" class="btn btn-secondary">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                    Download CSV
+                </button>
+                <button id="rules-toggle-btn" class="btn btn-secondary">Show Rules</button>
+                <button id="logout-btn" class="btn btn-danger hidden">Logout</button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left Column: Controls & Calculations -->
+            <section class="lg:col-span-1 space-y-6">
+                <!-- Capital Management -->
+                <div class="card p-6">
+                    <h2 class="text-xl font-semibold text-white mb-4">Capital & Risk</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label for="trading-capital" class="block text-sm font-medium mb-1">Trading Capital ($)</label>
+                            <input type="number" id="trading-capital" class="form-input" placeholder="e.g., 100000">
+                        </div>
+                        <div>
+                            <label for="risk-percent" class="block text-sm font-medium mb-1">Risk per Trade (%)</label>
+                            <input type="number" id="risk-percent" class="form-input" min="0.1" max="5" step="0.1" value="2">
+                        </div>
+                        <div>
+                            <label for="broker-fee" class="block text-sm font-medium mb-1">Broker Fee per Transaction ($)</label>
+                            <input type="number" id="broker-fee" class="form-input" value="20">
+                        </div>
+                         <button id="save-settings-btn" class="btn btn-primary w-full">Save Settings</button>
+                    </div>
+                </div>
+
+                <!-- Trade Calculator -->
+                <div class="card p-6">
+                    <h2 class="text-xl font-semibold text-white mb-4">New Trade Calculator</h2>
+                    <div class="space-y-4">
+                         <div>
+                            <label for="instrument" class="block text-sm font-medium mb-1">Instrument</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="text" id="instrument" class="form-input" placeholder="e.g., AAPL, BTC/USD">
+                                <button id="fetch-price-btn" class="btn btn-secondary px-3 py-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                      <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                                    </svg>
+                                </button>
+                                <div id="price-fetch-spinner" class="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-blue-500 hidden"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="atr" class="block text-sm font-medium mb-1">Average True Range (ATR)</label>
+                            <input type="number" id="atr" class="form-input" placeholder="Volatility value">
+                        </div>
+                        <div>
+                            <label for="entry-price" class="block text-sm font-medium mb-1">Entry Price</label>
+                            <input type="number" id="entry-price" class="form-input" placeholder="Price at entry">
+                        </div>
+                        <div>
+                            <label for="entry-date" class="block text-sm font-medium mb-1">Entry Date</label>
+                            <input type="date" id="entry-date" class="form-input">
+                        </div>
+                         <button id="calculate-btn" class="btn btn-primary w-full">Calculate</button>
+                    </div>
+                    <div id="calculation-result" class="mt-6 space-y-3 hidden">
+                        <h3 class="font-semibold text-white">Calculation Results:</h3>
+                        <p><strong>Position Size (Units):</strong> <span id="result-quantity" class="text-blue-400 font-bold"></span></p>
+                        <p><strong>Initial Stop-Loss:</strong> <span id="result-stoploss" class="text-red-400 font-bold"></span></p>
+                        <p><strong>Risk Amount:</strong> $<span id="result-risk-amount" class="text-yellow-400 font-bold"></span></p>
+                        <button id="log-trade-btn" class="btn btn-primary w-full mt-2">Log This Trade</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Column: Trades -->
+            <section class="lg:col-span-2 space-y-6">
+                <!-- Active Trades -->
+                <div class="card p-6">
+                    <h2 class="text-xl font-semibold text-white mb-4">Active Trades</h2>
+                    <div id="active-trades-list" class="space-y-4">
+                        <!-- JS will populate this -->
+                        <p id="no-active-trades" class="text-gray-400">No active trades.</p>
+                    </div>
+                </div>
+                <!-- Closed Trades -->
+                <div class="card p-6">
+                    <h2 class="text-xl font-semibold text-white mb-4">Trade History</h2>
+                     <div class="mb-4 text-center grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="card p-3"><h4 class="font-semibold text-lg" id="total-pnl">$0.00</h4><p class="text-sm text-gray-400">Total P&L</p></div>
+                        <div class="card p-3"><h4 class="font-semibold text-lg" id="pnl-percent">0.00%</h4><p class="text-sm text-gray-400">P&L %</p></div>
+                        <div class="card p-3"><h4 class="font-semibold text-lg" id="win-rate">0%</h4><p class="text-sm text-gray-400">Win Rate</p></div>
+                        <div class="card p-3"><h4 class="font-semibold text-lg" id="total-trades">0</h4><p class="text-sm text-gray-400">Total Trades</p></div>
+                    </div>
+                    <div id="closed-trades-list" class="space-y-2">
+                        <!-- JS will populate this -->
+                        <p id="no-closed-trades" class="text-gray-400">No closed trades yet.</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Turtle Rules Section -->
+        <footer id="rules-section" class="card p-6 hidden">
+             <h2 class="text-xl font-semibold text-white mb-4">Turtle Trading Rules Summary</h2>
+             <div class="prose prose-invert max-w-none text-gray-300 space-y-4">
+                <div>
+                    <h3 class="font-semibold text-lg text-white">Entry</h3>
+                    <ul class="list-disc pl-5">
+                        <li><strong>System 1:</strong> Enter on a 20-day breakout (high or low). Ignore if the last breakout was a winner.</li>
+                        <li><strong>System 2:</strong> Enter on a 55-day breakout (high or low). Take all breakouts.</li>
+                    </ul>
+                </div>
+                 <div>
+                    <h3 class="font-semibold text-lg text-white">Position Sizing</h3>
+                    <ul class="list-disc pl-5">
+                        <li>Calculate volatility using the 20-day Average True Range (ATR), which is 'N'.</li>
+                        <li>Unit size = (1% of Account) / (N * Dollars per Point). *This app uses your specified risk %.*</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-lg text-white">Pyramiding (Adding Units)</h3>
+                    <ul class="list-disc pl-5">
+                        <li>Add one unit for every 1/2 N move in your favor from the previous entry.</li>
+                        <li>Do not add more than 4 total units to a single trade.</li>
+                    </ul>
+                </div>
+                 <div>
+                    <h3 class="font-semibold text-lg text-white">Stops</h3>
+                    <ul class="list-disc pl-5">
+                        <li>Place initial stop-loss 2N below your entry for long positions, or 2N above for short positions.</li>
+                        <li>For pyramided trades, stops for all units can be raised to 2N from the most recently added unit's entry price to lock in profits.</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-lg text-white">Exits</h3>
+                     <ul class="list-disc pl-5">
+                        <li><strong>System 1 Exit:</strong> Exit when price hits the 10-day low for a long position, or the 10-day high for a short position.</li>
+                        <li><strong>System 2 Exit:</strong> Exit when price hits the 20-day low for a long position, or the 20-day high for a short position.</li>
+                    </ul>
+                </div>
+             </div>
+        </footer>
+    </div>
+    
+    <!-- Modal for Closing a Trade -->
+    <div id="close-trade-modal" class="modal-overlay hidden">
+        <div class="card p-6 w-11/12 md:w-1/3 space-y-4">
+            <h2 class="text-xl font-semibold text-white">Close Trade</h2>
+            <div>
+                <label for="exit-price" class="block text-sm font-medium mb-1">Exit Price</label>
+                <input type="number" id="exit-price" class="form-input" placeholder="Enter exit price">
+            </div>
+            <div>
+                <label for="exit-notes" class="block text-sm font-medium mb-1">Exit Notes / Reason</label>
+                <textarea id="exit-notes" class="form-input" rows="3" placeholder="e.g., Hit 10-day low exit signal."></textarea>
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button id="cancel-close-btn" class="btn btn-secondary">Cancel</button>
+                <button id="confirm-close-btn" class="btn btn-primary">Confirm Exit</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Confirm Modal -->
+    <div id="confirm-modal" class="modal-overlay hidden">
+        <div class="card p-6 w-11/12 md:max-w-sm space-y-4">
+            <h2 id="confirm-title" class="text-xl font-semibold text-white">Confirm Deletion</h2>
+            <p id="confirm-message" class="text-gray-300">Are you sure you want to delete this?</p>
+            <div class="flex justify-end space-x-3">
+                <button id="cancel-confirm-btn" class="btn btn-secondary">Cancel</button>
+                <button id="confirm-action-btn" class="btn btn-danger">Delete</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, addDoc, updateDoc, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        const firebaseConfig = {
+          apiKey: "AIzaSyAB507RStp2vMih8nzhS3NmJ1yWv_naMjM",
+          authDomain: "my-trading-journal-v2.firebaseapp.com",
+          projectId: "my-trading-journal-v2",
+          storageBucket: "my-trading-journal-v2.firebasestorage.app",
+          messagingSenderId: "561078406080",
+          appId: "1:561078406080:web:e73540f219df95c289d625"
+        };
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'turtle-trader-journal';
+
+        let db, auth, userId;
+        let trades = [];
+        let settings = {
+            capital: 100000,
+            riskPercent: 2,
+            brokerFee: 20
+        };
+
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const appContainer = document.getElementById('app');
+        const authContainer = document.getElementById('auth-container');
+
+        // Auth UI Elements
+        const authTitle = document.getElementById('auth-title');
+        const authError = document.getElementById('auth-error');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const loginBtn = document.getElementById('login-btn');
+        const registerBtn = document.getElementById('register-btn');
+        const toggleAuthModeLink = document.getElementById('toggle-auth-mode');
+        const logoutBtn = document.getElementById('logout-btn');
+        const userInfoDiv = document.getElementById('user-info');
+        
+
+        // UI Elements
+        const capitalInput = document.getElementById('trading-capital');
+        const riskInput = document.getElementById('risk-percent');
+        const brokerFeeInput = document.getElementById('broker-fee');
+        const saveSettingsBtn = document.getElementById('save-settings-btn');
+        const instrumentInput = document.getElementById('instrument');
+        const atrInput = document.getElementById('atr');
+        const entryPriceInput = document.getElementById('entry-price');
+        const entryDateInput = document.getElementById('entry-date');
+        const calculateBtn = document.getElementById('calculate-btn');
+        const fetchPriceBtn = document.getElementById('fetch-price-btn');
+        const priceFetchSpinner = document.getElementById('price-fetch-spinner');
+        const calculationResultDiv = document.getElementById('calculation-result');
+        const resultQuantitySpan = document.getElementById('result-quantity');
+        const resultStoplossSpan = document.getElementById('result-stoploss');
+        const resultRiskAmountSpan = document.getElementById('result-risk-amount');
+        const logTradeBtn = document.getElementById('log-trade-btn');
+        const activeTradesList = document.getElementById('active-trades-list');
+        const closedTradesList = document.getElementById('closed-trades-list');
+        const noActiveTrades = document.getElementById('no-active-trades');
+        const noClosedTrades = document.getElementById('no-closed-trades');
+        const totalPnlEl = document.getElementById('total-pnl');
+        const pnlPercentEl = document.getElementById('pnl-percent');
+        const winRateEl = document.getElementById('win-rate');
+        const totalTradesEl = document.getElementById('total-trades');
+        const rulesSection = document.getElementById('rules-section');
+        const rulesToggleBtn = document.getElementById('rules-toggle-btn');
+        const downloadBtn = document.getElementById('download-btn');
+        
+        // Modals
+        const closeTradeModal = document.getElementById('close-trade-modal');
+        const cancelCloseBtn = document.getElementById('cancel-close-btn');
+        const confirmCloseBtn = document.getElementById('confirm-close-btn');
+        const exitPriceInput = document.getElementById('exit-price');
+        const exitNotesInput = document.getElementById('exit-notes');
+        const confirmModal = document.getElementById('confirm-modal');
+        const confirmTitle = document.getElementById('confirm-title');
+        const confirmMessage = document.getElementById('confirm-message');
+        const cancelConfirmBtn = document.getElementById('cancel-confirm-btn');
+        const confirmActionBtn = document.getElementById('confirm-action-btn');
+
+        let calculatedTradeData = null;
+        let tradeToCloseId = null;
+        let isRegisterMode = false;
+        let confirmCallback = null;
+
+        // Generic Alert Function
+        function showAlert(message, isError = true) {
+            const alertId = `alert-${Date.now()}`;
+            const alertBox = document.createElement('div');
+            const bgColor = isError ? 'bg-red-500' : 'bg-blue-500';
+            alertBox.id = alertId;
+            alertBox.className = `fixed top-5 right-5 ${bgColor} text-white py-2 px-4 rounded-lg shadow-lg transition-transform transform translate-x-full`;
+            alertBox.textContent = message;
+            
+            const style = document.createElement('style');
+            style.innerHTML = `
+                @keyframes slide-in-out-${alertId} {
+                    0% { transform: translateX(110%); }
+                    15% { transform: translateX(0); }
+                    85% { transform: translateX(0); }
+                    100% { transform: translateX(110%); }
+                }
+                #${alertId} {
+                    animation: slide-in-out-${alertId} 4s forwards ease-in-out;
+                }
+            `;
+            document.head.appendChild(style);
+            document.body.appendChild(alertBox);
+
+            setTimeout(() => {
+                alertBox.remove();
+                style.remove();
+            }, 4000);
+        }
+
+        async function initializeFirebase() {
+            const connectionTimeout = setTimeout(() => {
+                loadingSpinner.innerHTML = `
+                    <div class="text-center text-red-400 p-4">
+                        <p class="font-semibold">Connection Failed</p>
+                        <p class="text-sm mt-2">Could not connect to the database. Please check your internet connection.</p>
+                        <p class="text-xs mt-2">If opening this as a local file on mobile, it may not work due to browser security restrictions.</p>
+                    </div>`;
+            }, 8000);
+
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                setupAuthListeners();
+
+                onAuthStateChanged(auth, async (user) => {
+                    clearTimeout(connectionTimeout);
+                    if (user) {
+                        userId = user.uid;
+                        userInfoDiv.textContent = user.email;
+                        userInfoDiv.classList.remove('hidden');
+                        logoutBtn.classList.remove('hidden');
+                        
+                        await loadData();
+                        setupListeners();
+                        
+                        authContainer.style.display = 'none';
+                        appContainer.style.display = 'block';
+                    } else {
+                        userId = null;
+                        trades = [];
+                        renderTrades();
+                        updateStats();
+
+                        userInfoDiv.textContent = '';
+                        userInfoDiv.classList.add('hidden');
+                        logoutBtn.classList.add('hidden');
+
+                        authContainer.style.display = 'block';
+                        appContainer.style.display = 'none';
+                    }
+                    loadingSpinner.style.display = 'none';
+                });
+            } catch (error) {
+                clearTimeout(connectionTimeout);
+                console.error("Firebase initialization failed:", error);
+                loadingSpinner.innerHTML = "Error loading app. Please check console.";
+            }
+        }
+
+        async function loadData() {
+            if (!userId) return;
+            const settingsRef = doc(db, "artifacts", appId, "users", userId);
+            const settingsSnap = await getDoc(settingsRef);
+            if (settingsSnap.exists()) {
+                const data = settingsSnap.data();
+                settings.capital = data.capital || 100000;
+                settings.riskPercent = data.riskPercent || 2;
+                settings.brokerFee = data.brokerFee === 0 ? 0 : data.brokerFee || 20;
+            }
+            capitalInput.value = settings.capital;
+            riskInput.value = settings.riskPercent;
+            brokerFeeInput.value = settings.brokerFee;
+
+            const tradesColRef = collection(db, "artifacts", appId, "users", userId, "trades");
+            onSnapshot(tradesColRef, (snapshot) => {
+                trades = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderTrades();
+                updateStats();
+            });
+        }
+
+        function setupAuthListeners() {
+            loginBtn.addEventListener('click', async () => {
+                const email = emailInput.value;
+                const password = passwordInput.value;
+                showAuthError('');
+                try {
+                    await signInWithEmailAndPassword(auth, email, password);
+                } catch (error) {
+                    showAuthError(error.message);
+                }
+            });
+
+            registerBtn.addEventListener('click', async () => {
+                 const email = emailInput.value;
+                const password = passwordInput.value;
+                showAuthError('');
+                try {
+                    await createUserWithEmailAndPassword(auth, email, password);
+                } catch (error) {
+                    showAuthError(error.message);
+                }
+            });
+
+            logoutBtn.addEventListener('click', () => {
+                signOut(auth);
+            });
+
+            toggleAuthModeLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                isRegisterMode = !isRegisterMode;
+                if (isRegisterMode) {
+                    authTitle.textContent = "Register";
+                    loginBtn.style.display = 'none';
+                    registerBtn.style.display = 'block';
+                    toggleAuthModeLink.innerHTML = 'Already have an account? Login here.';
+                } else {
+                    authTitle.textContent = "Login";
+                    loginBtn.style.display = 'block';
+                    registerBtn.style.display = 'none';
+                    toggleAuthModeLink.innerHTML = 'Need an account? Register here.';
+                }
+                showAuthError('');
+            });
+            registerBtn.style.display = 'none';
+        }
+
+        function showAuthError(message) {
+            authError.textContent = message;
+            authError.classList.toggle('hidden', !message);
+        }
+
+        function setupListeners() {
+            if(saveSettingsBtn.dataset.listener) return;
+
+            saveSettingsBtn.addEventListener('click', saveSettings);
+            calculateBtn.addEventListener('click', calculateTrade);
+            fetchPriceBtn.addEventListener('click', handleFetchPrice);
+            logTradeBtn.addEventListener('click', logTrade);
+            rulesToggleBtn.addEventListener('click', toggleRules);
+            downloadBtn.addEventListener('click', downloadCSV);
+            entryDateInput.valueAsDate = new Date();
+            activeTradesList.addEventListener('click', handleActiveTradeAction);
+
+            // Modals
+            cancelCloseBtn.addEventListener('click', () => closeTradeModal.classList.add('hidden'));
+            confirmCloseBtn.addEventListener('click', confirmCloseTrade);
+            cancelConfirmBtn.addEventListener('click', () => {
+                confirmModal.classList.add('hidden');
+                confirmCallback = null;
+            });
+            confirmActionBtn.addEventListener('click', () => {
+                if (typeof confirmCallback === 'function') {
+                    confirmCallback();
+                }
+            });
+
+            saveSettingsBtn.dataset.listener = 'true';
+        }
+
+        async function handleFetchPrice() {
+            const instrument = instrumentInput.value.trim();
+            if (!instrument) {
+                showAlert("Please enter an instrument symbol first.");
+                return;
+            }
+
+            fetchPriceBtn.disabled = true;
+            priceFetchSpinner.classList.remove('hidden');
+
+            try {
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+                const systemPrompt = "You are an API that returns financial data. When given a stock or crypto symbol, use your search tool to find the latest market price. Return the response as a JSON object with a single key 'price' which is a number. Do not return any other text, formatting, or explanation.";
+                const userQuery = `Get the latest price for ${instrument}`;
+
+                const payload = {
+                    contents: [{ parts: [{ text: userQuery }] }],
+                    tools: [{ "google_search": {} }],
+                    systemInstruction: { parts: [{ text: systemPrompt }] },
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: {
+                            type: "OBJECT",
+                            properties: { "price": { "type": "NUMBER" } },
+                            required: ["price"]
+                        }
+                    }
+                };
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) throw new Error(`API call failed with status: ${response.status}`);
+
+                const result = await response.json();
+                const candidate = result.candidates?.[0];
+
+                if (candidate?.content?.parts?.[0]?.text) {
+                    const jsonText = candidate.content.parts[0].text;
+                    const data = JSON.parse(jsonText);
+                    if (data?.price && typeof data.price === 'number') {
+                        entryPriceInput.value = data.price.toFixed(4);
+                    } else {
+                         throw new Error("Could not parse price from API response.");
+                    }
+                } else {
+                    throw new Error("Invalid response structure from API.");
+                }
+
+            } catch (error) {
+                console.error("Error fetching market price:", error);
+                showAlert("Price fetch failed. This feature may not work on local files. Please enter manually.");
+            } finally {
+                fetchPriceBtn.disabled = false;
+                priceFetchSpinner.classList.add('hidden');
+            }
+        }
+
+        async function saveSettings() {
+            const newCapital = parseFloat(capitalInput.value);
+            const newRisk = parseFloat(riskInput.value);
+            const newBrokerFee = parseFloat(brokerFeeInput.value);
+
+            if (isNaN(newCapital) || newCapital <= 0) return showAlert("Invalid Capital amount.");
+            if (isNaN(newRisk) || newRisk <= 0 || newRisk > 5) return showAlert("Risk must be between 0.1% and 5%.");
+            if (isNaN(newBrokerFee) || newBrokerFee < 0) return showAlert("Broker fee cannot be negative.");
+
+            settings.capital = newCapital;
+            settings.riskPercent = newRisk;
+            settings.brokerFee = newBrokerFee;
+
+            const settingsRef = doc(db, "artifacts", appId, "users", userId);
+            try {
+                await setDoc(settingsRef, settings, { merge: true });
+                showAlert("Settings saved!", false);
+            } catch (e) {
+                console.error("Error saving settings: ", e);
+                showAlert("Failed to save settings.");
+            }
+        }
+        
+        function calculateTrade() {
+            const atr = parseFloat(atrInput.value);
+            const entryPrice = parseFloat(entryPriceInput.value);
+            const instrument = instrumentInput.value.trim();
+            const entryDate = entryDateInput.value;
+
+            if (!instrument || isNaN(atr) || atr <= 0 || isNaN(entryPrice) || entryPrice <= 0 || !entryDate) {
+                return showAlert("Please fill all fields with valid numbers.");
+            }
+            
+            const riskAmountPerTrade = settings.capital * (settings.riskPercent / 100);
+            const quantity = Math.floor(riskAmountPerTrade / (atr * 2));
+            const stoploss = entryPrice - (2 * atr);
+
+            if (quantity <= 0) {
+                showAlert("Calculation resulted in zero quantity. Adjust risk or ATR.");
+                calculationResultDiv.classList.add('hidden');
+                return;
+            }
+
+            resultQuantitySpan.textContent = quantity;
+            resultStoplossSpan.textContent = stoploss.toFixed(4);
+            resultRiskAmountSpan.textContent = riskAmountPerTrade.toFixed(2);
+            calculationResultDiv.classList.remove('hidden');
+
+            calculatedTradeData = {
+                instrument,
+                atr: atr,
+                entryDate: new Date(entryDate).toISOString(),
+                status: 'active',
+                entries: [{ price: entryPrice, quantity: quantity }],
+                currentStoploss: stoploss,
+                initialStoploss: stoploss,
+            };
+        }
+
+        async function logTrade() {
+            if (!calculatedTradeData) return showAlert("Please calculate trade details first.");
+            
+            try {
+                const tradesColRef = collection(db, "artifacts", appId, "users", userId, "trades");
+                await addDoc(tradesColRef, calculatedTradeData);
+                showAlert("Trade logged successfully!", false);
+                instrumentInput.value = '';
+                atrInput.value = '';
+                entryPriceInput.value = '';
+                entryDateInput.valueAsDate = new Date();
+                calculationResultDiv.classList.add('hidden');
+                calculatedTradeData = null;
+            } catch (e) {
+                console.error("Error logging trade: ", e);
+                showAlert("Failed to log trade.");
+            }
+        }
+        
+        function renderTrades() {
+            const activeTrades = trades.filter(t => t.status === 'active');
+            const closedTrades = trades.filter(t => t.status === 'closed');
+
+            activeTradesList.innerHTML = '';
+            if (activeTrades.length > 0) {
+                noActiveTrades.style.display = 'none';
+                activeTrades.forEach(trade => activeTradesList.appendChild(createActiveTradeCard(trade)));
+            } else {
+                noActiveTrades.style.display = 'block';
+            }
+
+            closedTradesList.innerHTML = '';
+            if (closedTrades.length > 0) {
+                noClosedTrades.style.display = 'none';
+                closedTrades.sort((a,b) => new Date(b.exitDate) - new Date(a.exitDate));
+                closedTrades.forEach(trade => closedTradesList.appendChild(createClosedTradeRow(trade)));
+            } else {
+                noClosedTrades.style.display = 'block';
+            }
+        }
+        
+        function createActiveTradeCard(trade) {
+            const card = document.createElement('div');
+            card.className = 'card p-4 space-y-3';
+            card.dataset.id = trade.id;
+            
+            const totalQuantity = trade.entries.reduce((sum, e) => sum + e.quantity, 0);
+            const avgEntryPrice = trade.entries.reduce((sum, e) => sum + (e.price * e.quantity), 0) / totalQuantity;
+            const entryDate = new Date(trade.entryDate).toLocaleDateString();
+
+            let pyramidHtml = '';
+            trade.entries.forEach((entry, index) => {
+                pyramidHtml += `<div class="text-sm"><strong>Entry ${index + 1}:</strong> ${entry.quantity} @ ${entry.price.toFixed(4)}</div>`;
+            });
+
+            let futurePyramidHtml = '';
+            if (trade.entries.length < 4 && trade.atr) {
+                const initialQuantity = trade.entries[0].quantity;
+                const lastEntryPrice = trade.entries[trade.entries.length - 1].price;
+
+                let futureEntriesContent = '';
+                for (let i = trade.entries.length; i < 4; i++) {
+                    const level = i + 1;
+                    const priceOffset = (i - (trade.entries.length - 1) + 1) * 0.5 * trade.atr;
+                    const targetPrice = lastEntryPrice + priceOffset;
+
+                    futureEntriesContent += `
+                        <div class="flex space-x-2 items-center" data-level="${level}">
+                             <span class="text-xs font-medium w-32">Entry ${level} (~${targetPrice.toFixed(4)}):</span>
+                             <input type="number" value="${targetPrice.toFixed(4)}" placeholder="Price" class="form-input text-sm p-1 flex-grow" data-action="pyramid-price">
+                             <input type="number" value="${initialQuantity}" readonly class="form-input text-sm p-1 w-20 bg-gray-700 cursor-not-allowed" data-action="pyramid-qty">
+                             <button class="btn btn-secondary text-xs" data-action="add-pyramid">Add</button>
+                        </div>`;
+                }
+                
+                futurePyramidHtml = `
+                <div class="pt-3 border-t border-gray-700/50">
+                     <h4 class="font-semibold mb-2 text-sm">Future Pyramid Entries</h4>
+                     <div class="space-y-2">
+                        ${futureEntriesContent}
+                     </div>
+                </div>`;
+            } else if (trade.entries.length >= 4) {
+                 futurePyramidHtml = '<p class="text-sm text-gray-400 pt-2 border-t border-gray-700/50">Max pyramid units reached.</p>';
+            }
+            
+            card.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="font-bold text-lg text-white">${trade.instrument}</h3>
+                        <p class="text-sm text-gray-400">Entered: ${entryDate} | Avg Price: ${avgEntryPrice.toFixed(4)} | Total Qty: ${totalQuantity}</p>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button class="btn btn-danger text-xs" data-action="close">Close</button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <h4 class="font-semibold mb-1">Pyramid Stages</h4>
+                        ${pyramidHtml}
+                    </div>
+                    <div>
+                        <h4 class="font-semibold mb-1">Stop-Loss</h4>
+                        <div class="flex items-center">
+                            <input type="number" value="${trade.currentStoploss.toFixed(4)}" class="form-input text-sm p-1 flex-grow" data-action="sl-input">
+                            <button class="btn btn-primary text-xs ml-2" data-action="update-sl">Update</button>
+                        </div>
+                    </div>
+                </div>
+                ${futurePyramidHtml}
+            `;
+            return card;
+        }
+
+        function createClosedTradeRow(trade) {
+            const row = document.createElement('div');
+            const pnl = trade.pnl || 0;
+            const pnlColor = pnl >= 0 ? 'text-green-400' : 'text-red-400';
+            const sign = pnl >= 0 ? '+' : '';
+            const totalCost = trade.entries.reduce((sum, e) => sum + e.price * e.quantity, 0);
+            const pnlPercent = totalCost > 0 ? (pnl / totalCost * 100).toFixed(2) : 0;
+            const entryDate = new Date(trade.entryDate).toLocaleDateString();
+            const exitDate = new Date(trade.exitDate).toLocaleDateString();
+
+            const notesIconHtml = trade.exitNotes ? `
+                <span class="relative group cursor-pointer ml-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500 hover:text-gray-300" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                    </svg>
+                    <div class="absolute bottom-full right-0 mb-2 w-64 bg-gray-900 text-white text-xs rounded py-2 px-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 border border-gray-700 shadow-lg text-left whitespace-normal">
+                        <strong>Exit Notes:</strong><br>${trade.exitNotes.replace(/\n/g, '<br>')}
+                    </div>
+                </span>` : '';
+
+            row.className = 'grid grid-cols-3 md:grid-cols-4 gap-2 items-center text-sm p-2 rounded-lg hover:bg-white/5 transition-colors';
+            row.innerHTML = `
+                <div class="font-semibold text-white flex items-center col-span-1">${trade.instrument} ${notesIconHtml}</div>
+                <div class="hidden md:block text-gray-400">${entryDate} -> ${exitDate}</div>
+                <div class="${pnlColor} font-semibold">${sign}$${pnl.toFixed(2)} (${pnlPercent}%)</div>
+                <div class="text-right"><button class="text-red-500 hover:text-red-400 text-xs font-semibold" onclick="deleteTrade('${trade.id}')">DELETE</button></div>
+            `;
+            return row;
+        }
+        
+        function showConfirmModal(title, message, onConfirm) {
+            confirmTitle.textContent = title;
+            confirmMessage.innerHTML = message;
+            confirmCallback = onConfirm;
+            confirmModal.classList.remove('hidden');
+        }
+
+        window.deleteTrade = function(tradeId) {
+             const trade = trades.find(t => t.id === tradeId);
+             if (!trade) return;
+             showConfirmModal(
+                'Delete Trade?',
+                `Are you sure you want to permanently delete the trade for <strong>${trade.instrument}</strong>? This cannot be undone.`,
+                async () => {
+                    const tradeRef = doc(db, "artifacts", appId, "users", userId, "trades", tradeId);
+                    await deleteDoc(tradeRef);
+                    confirmModal.classList.add('hidden');
+                    confirmCallback = null;
+                    showAlert("Trade deleted.", false);
+                }
+             );
+        }
+
+        async function handleActiveTradeAction(e) {
+            if (!e.target.dataset.action) return;
+            
+            const action = e.target.dataset.action;
+            const card = e.target.closest('.card');
+            const tradeId = card.dataset.id;
+            const trade = trades.find(t => t.id === tradeId);
+
+            if (action === 'close') {
+                tradeToCloseId = tradeId;
+                exitPriceInput.value = '';
+                exitNotesInput.value = '';
+                closeTradeModal.classList.remove('hidden');
+            } else if (action === 'update-sl') {
+                const newSl = parseFloat(card.querySelector('[data-action="sl-input"]').value);
+                if (!isNaN(newSl)) {
+                    const tradeRef = doc(db, "artifacts", appId, "users", userId, "trades", tradeId);
+                    await updateDoc(tradeRef, { currentStoploss: newSl });
+                    showAlert("Stop-loss updated!", false);
+                }
+            } else if (action === 'add-pyramid') {
+                const container = e.target.closest('[data-level]');
+                const price = parseFloat(container.querySelector('[data-action="pyramid-price"]').value);
+                const quantity = parseInt(container.querySelector('[data-action="pyramid-qty"]').value);
+
+                if (trade.entries.length < 4 && !isNaN(price) && price > 0 && !isNaN(quantity) && quantity > 0) {
+                    const updatedEntries = [...trade.entries, { price, quantity }];
+                    updatedEntries.sort((a, b) => a.price - b.price); 
+                    const tradeRef = doc(db, "artifacts", appId, "users", userId, "trades", tradeId);
+                    await updateDoc(tradeRef, { entries: updatedEntries });
+                    showAlert("Pyramid entry added!", false);
+                } else {
+                     showAlert("Invalid price or max pyramid entries reached.");
+                }
+            }
+        }
+
+        async function confirmCloseTrade() {
+            const exitPrice = parseFloat(exitPriceInput.value);
+            if (isNaN(exitPrice) || exitPrice <= 0) return showAlert("Please enter a valid exit price.");
+
+            const trade = trades.find(t => t.id === tradeToCloseId);
+            if (!trade) return;
+
+            const totalQuantity = trade.entries.reduce((sum, e) => sum + e.quantity, 0);
+            const totalCost = trade.entries.reduce((sum, e) => sum + (e.price * e.quantity), 0);
+            const exitValue = exitPrice * totalQuantity;
+            const grossPnl = exitValue - totalCost;
+            
+            const totalTransactions = trade.entries.length + 1;
+            const totalFees = totalTransactions * (settings.brokerFee || 0);
+            const netPnl = grossPnl - totalFees;
+
+            const exitNotes = exitNotesInput.value.trim();
+
+            const tradeRef = doc(db, "artifacts", appId, "users", userId, "trades", tradeToCloseId);
+            await updateDoc(tradeRef, {
+                status: 'closed',
+                exitPrice: exitPrice,
+                exitDate: new Date().toISOString(),
+                pnl: netPnl,
+                brokerFees: totalFees,
+                exitNotes: exitNotes
+            });
+
+            const newCapital = settings.capital + netPnl;
+            settings.capital = newCapital;
+            capitalInput.value = newCapital.toFixed(2);
+            await saveSettings();
+
+            closeTradeModal.classList.add('hidden');
+            tradeToCloseId = null;
+            showAlert("Trade closed and P&L calculated.", false);
+        }
+
+        function updateStats() {
+            const closedTrades = trades.filter(t => t.status === 'closed');
+            if (closedTrades.length === 0) {
+                totalPnlEl.textContent = "$0.00";
+                pnlPercentEl.textContent = "0.00%";
+                winRateEl.textContent = "0%";
+                totalTradesEl.textContent = "0";
+                return;
+            }
+
+            const totalPnl = closedTrades.reduce((sum, t) => sum + (t.pnl || 0), 0);
+            const initialCapital = settings.capital - totalPnl;
+            const pnlPercent = initialCapital > 0 ? (totalPnl / initialCapital * 100) : 0;
+            const wins = closedTrades.filter(t => t.pnl > 0).length;
+            const winRate = (wins / closedTrades.length * 100);
+
+            totalPnlEl.textContent = `$${totalPnl.toFixed(2)}`;
+            totalPnlEl.className = `font-semibold text-lg ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`;
+            pnlPercentEl.textContent = `${pnlPercent.toFixed(2)}%`;
+            pnlPercentEl.className = `font-semibold text-lg ${pnlPercent >= 0 ? 'text-green-400' : 'text-red-400'}`;
+            winRateEl.textContent = `${winRate.toFixed(0)}%`;
+            totalTradesEl.textContent = closedTrades.length;
+        }
+
+        function toggleRules() {
+            const isHidden = rulesSection.classList.toggle('hidden');
+            rulesToggleBtn.textContent = isHidden ? 'Show Rules' : 'Hide Rules';
+        }
+
+        function downloadCSV() {
+            if (trades.length === 0) return showAlert("No trades to download.");
+
+            const dataForCsv = [];
+            trades.forEach(trade => {
+                 const totalQuantity = trade.entries.reduce((sum, e) => sum + e.quantity, 0);
+                 const avgEntryPrice = trade.entries.reduce((sum, e) => sum + (e.price * e.quantity), 0) / totalQuantity;
+                 
+                 dataForCsv.push({
+                    instrument: trade.instrument,
+                    status: trade.status,
+                    entry_date: new Date(trade.entryDate).toLocaleString(),
+                    average_entry_price: avgEntryPrice.toFixed(4),
+                    total_quantity: totalQuantity,
+                    initial_stoploss: trade.initialStoploss,
+                    current_stoploss: trade.currentStoploss,
+                    exit_date: trade.exitDate ? new Date(trade.exitDate).toLocaleString() : '',
+                    exit_price: trade.exitPrice || '',
+                    net_pnl: trade.pnl || '',
+                    broker_fees: trade.brokerFees || '',
+                    pyramid_stages: trade.entries.length,
+                    exit_notes: trade.exitNotes || ''
+                 });
+            });
+
+            const csv = Papa.unparse(dataForCsv);
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", "turtle_trade_journal.csv");
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Initialize App
+        initializeFirebase();
+    </script>
+</body>
+</html>

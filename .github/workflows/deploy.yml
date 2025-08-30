@@ -1,0 +1,25 @@
+name: Deploy to Firebase Hosting
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: |
+          if [ -f ./public/index.html ]; then
+            echo "Found index.html in public folder"
+          else
+            echo "index.html not found in public folder!"
+            exit 1
+          fi
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_MY_TRADING_JOURNAL_V2 }}'
+          channelId: live
+          projectId: my-trading-journal-v2

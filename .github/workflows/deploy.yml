@@ -16,4 +16,4 @@ jobs:
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_MY_TRADING_JOURNAL_V2 }}'
           channelId: live
           projectId: my-trading-journal-v2
-          workingDirectory: ./TTAPP
+          
